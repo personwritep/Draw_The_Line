@@ -1,0 +1,308 @@
+// ==UserScript==
+// @name         Draw The Line ⭐
+// @namespace  http://tampermonkey.net/
+// @version      0.2
+// @description  各種の装飾線を記入するツール
+// @author       Ameba Blog User
+// @match        https://blog.ameba.jp/ucs/entry/srventry*
+// @exclude      https://blog.ameba.jp/ucs/entry/srventrylist.do*
+// @grant         none
+// ==/UserScript==
+
+
+let retry=0;
+let interval=setInterval(wait_target, 100);
+function wait_target(){
+    retry++;
+    if(retry>10){ // リトライ制限 10回 1sec
+        clearInterval(interval); }
+    let target=document.getElementById('cke_1_contents'); // 監視 target
+    if(target){
+        clearInterval(interval);
+        main(); }}
+
+
+function main(){
+    let task=0; // アンダーライン・マーカー線・消し線・終了
+
+    let ua=0; // Chromeの場合のフラグ
+    let agent=window.navigator.userAgent.toLowerCase();
+    if(agent.indexOf('firefox') > -1){ ua=1; } // Firefoxの場合のフラグ
+
+
+    let target=document.getElementById('cke_1_contents'); // 監視 target
+    let monitor=new MutationObserver(catch_key);
+    monitor.observe(target, {childList: true}); // ショートカット待受け開始
+
+    catch_key();
+
+    function catch_key(){
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+
+            iframe_doc.addEventListener('keydown', check_key);
+            document.addEventListener('keydown', check_key);
+
+            function check_key(event){
+                let gate=-1;
+                if(event.ctrlKey==true){
+                    if(event.keyCode==114){
+                        event.preventDefault(); gate=1; }
+                    if(gate==1){
+                        event.stopImmediatePropagation();
+                        do_task(); }}}
+
+            function do_task(){
+                if(task==0){
+                    task=1;
+                    panel_disp();
+                    change_panel();
+                    draw_line(); }
+                else if(task==1){
+                    task=2;
+                    change_panel(); }
+                else if(task==2){
+                    task=3;
+                    change_panel(); }
+                else if(task==3){
+                    task=0;
+                    panel_remove(); }}
+        }} // catch_key()
+
+
+
+    function draw_line(){
+        let editor_iframe;
+        let iframe_doc;
+        let selection;
+        let range;
+        let insert_node;
+
+        editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+        iframe_doc=editor_iframe.contentWindow.document;
+        selection=iframe_doc.getSelection();
+
+        show_color();
+        pick_color();
+
+        let style_text;
+
+        let l_type=document.querySelector('#l_type');
+        let single=document.querySelector('#single');
+        let double=document.querySelector('#double');
+        let l_width=document.querySelector('#l_width');
+        let l_base=document.querySelector('#l_base');
+        let l_width_m=document.querySelector('#l_width_m');
+        let l_trance_m=document.querySelector('#l_trance_m');
+        let l_color=document.querySelector('#l_color');
+
+        single.checked=true;
+
+        double.onclick=function(){
+            double.checked=true;
+            l_width.disabled=true;
+            l_width.value=1; }
+        single.onclick=function(){
+            single.checked=true;
+            l_width.disabled=false; }
+
+
+        l_type.onclick=function(){
+            range=selection.getRangeAt(0);
+            get_param();
+            insert_node=document.createElement('span');
+            insert_node.style.paddingBottom='.4em';
+            insert_node.style.background=style_text;
+
+            try{
+                range.surroundContents(insert_node); }
+            catch(e){;}
+            range.collapse(); }
+
+        function get_param(){
+            let l_bt= l_base.value;
+            let l_ct=l_color.value;
+            let l_wt=l_width.value;
+            if(single.checked){
+                style_text=
+                    'linear-gradient(transparent '+ l_bt +'em, '+
+                    l_ct +' 0, '+
+                    l_ct +' calc('+ l_bt +'em + '+ l_wt +'px), transparent 0)'; }
+            if(double.checked){
+                style_text=
+                    'linear-gradient('+
+                    'transparent '+ l_bt +'em, '+
+                    l_ct +' 0, '+ l_ct +' calc('+ l_bt +'em + 1px), '+
+                    'transparent 0, transparent calc('+ l_bt +'em + 2px), '+
+                    l_ct +' 0, '+ l_ct +' calc('+ l_bt +'em + 3px), '+
+                    'transparent 0)'; }}
+    } // draw_line()
+
+
+
+    function change_panel(){
+        let l_type=document.querySelector('#l_type');
+        let type_1=document.querySelector('#type_1');
+        let type_2=document.querySelector('#type_2');
+
+        if(task==1){
+            l_type.value="アンダーライン";
+            type_1.style.display='inline-block';
+            type_2.style.display='none'; }
+        else if(task==2){
+            l_type.value="マーカー線";
+            type_1.style.display='none';
+            type_2.style.display='inline-block'; }
+        else if(task==3){
+            l_type.value="取り消し線";
+            type_1.style.display='inline-block';
+            type_2.style.display='none'; }}
+
+
+
+    function panel_disp(){
+        let panel=document.createElement('div');
+        panel.setAttribute('id', 'l_panel');
+
+        panel.innerHTML=
+            '<input id="l_type" type="submit" value="アンダーライン">'+
+            '<div id="type_1">'+
+            '<input id="single" type="radio" name="s_d">'+
+            '<span class="l_label">単線</span>'+
+            '<input id="double" type="radio" name="s_d">'+
+            '<span class="l_label">2重線</span>'+
+            '<span class="l_label label_w">線幅</span>'+
+            '<input id="l_width" type="number" step="1" min="1" max="50" value="1">'+
+            '<span class="l_label">開始位置</span>'+
+            '<input id="l_base" type="number" step="0.01" min="0.90" max="1.50" value="1.23">'+
+            '</div>'+
+            '<div id="type_2">'+
+            '<span class="l_label label_w">線幅</span>'+
+            '<input id="l_width_m" type="number" min="1" value="1">'+
+            '<span class="l_label">開始位置</span>'+
+            '<input id="l_base_m" type="number" step="0.1" min="0" max="1.0" value="0.5">'+
+            '<span class="l_label"> 透過度</span>'+
+            '<input id="l_trance_m" type="number" min="0" max="100" value="100">'+
+            '</div>'+
+            '<span class="l_label">線色</span>'+
+            '<input id="l_color" type="text" value="#333" autocomplete="off">';
+
+        let css=
+            '#l_panel { position: fixed; top: 15px; left: calc(50% - 490px); width: 784px; '+
+            'padding: 6px 12px; font-size: 14px; border: 1px solid #ccc; '+
+            'border-radius: 4px; background: #eff5f6; z-index: 10; }'+
+            '#type_1 { display: inline-block; width: 400px; } #type_2 { display: none; width: 400px; }'+
+            '#l_panel input { margin-right: 20px; padding-top: 2px; position: relative; }'+
+            '#l_panel input[type="radio"] { margin: 0 2px 0 6px; vertical-align: -2px; box-shadow: none; }'+
+            '.l_label { margin: 0 6px 0 0; } .label_w { margin: 0 6px 0 20px; }'+
+            '#l_type { width: 120px; margin-right: 30px; }'+
+            '#l_width { width: 45px; text-align: center; }'+
+            '#l_base { width: 55px; padding-left: 6px; }'+
+            '#l_width_m { width: 45px; text-align: center; }'+
+            '#l_base_m { width: 45px; padding-left: 6px; }'+
+            '#l_trance_m { width: 50px; text-align: center; }'+
+            '#l_color { width: 120px; padding: 2px 24px 0 6px; border: thin solid #aaa; height: 23px; }'+
+            '#cke_42 { top: 60px !important; left: calc( 50% - 45px) !important; }';
+
+        if(ua==1){
+            css=css +
+                '#l_width, #l_base, #l_width_m, #l_trance_m { height: 24px; border: thin solid #aaa; }'; }
+
+        let style=document.createElement('style');
+        style.innerHTML=css;
+        panel.appendChild(style);
+
+        let l_panel=document.querySelector('#l_panel');
+        if(!l_panel){
+            document.querySelector('.l-body').appendChild(panel); }} // panel_disp()
+
+
+    function panel_remove(){
+        let l_panel=document.querySelector('#l_panel');
+        l_panel.remove(); }
+
+
+
+    function show_color(){
+        let l_color=document.querySelector('#l_color');
+        l_color.style.boxShadow='inset -20px 0 ' + l_color.value; }
+
+
+
+    function pick_color(){
+        let set_color;
+        let color_input_selector;
+        let color_label;
+        let icon_button;
+        let editor_iframe;
+        let iframe_doc;
+        let selection;
+        let range;
+
+        editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+        iframe_doc=editor_iframe.contentWindow.document;
+        selection=iframe_doc.getSelection();
+
+        if(ua==0){
+            color_label=document.querySelector('#cke_16_label');
+            icon_button=document.querySelector('#cke_17'); }
+        else if(ua==1){
+            color_label=document.querySelector('#cke_15_label');
+            icon_button=document.querySelector('#cke_16'); }
+
+        let target_p=color_label; // 監視 アイコンのカラーラベル
+        let monitor_p=new MutationObserver( get_copy );
+
+        let l_color=document.querySelector('#l_color');
+
+        l_color.onclick=function(event){
+            if(event.ctrlKey==true){
+                event.preventDefault();
+                icon_button.click();
+                selection.removeAllRanges(); // 反転選択がある場合に背景指定を防止する
+                monitor_p.observe(target_p, {attributes: true}); }} // アイコンカラー取得開始
+
+        l_color.addEventListener('input', function(event){
+            event.preventDefault();
+            if(test_color(l_color.value)){
+                l_color.style.boxShadow='inset -20px 0 ' + l_color.value; }
+            else{
+                if(l_color.value==''){
+                    l_color.style.boxShadow='inset 0 0 0 1px black'; }
+                else{
+                    l_color.style.boxShadow='inset 0 0 0 1px black'; // 担保コード
+                    l_color.style.boxShadow=
+                        'inset 0 0 0 1px black, inset -20px 0 ' + l_color.value; }}});
+
+        function test_color(color){
+            return color.match(/^#([A-Fa-f0-9]{6}|[A-Fa-f0-9]{3})$/) !== null; }
+
+        document.addEventListener('mousedown', function(){
+            monitor_p.disconnect(); }); // アイコンカラー取得終了
+
+        if(document.querySelector('.cke_wysiwyg_frame') !=null){
+            let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
+            let iframe_doc=editor_iframe.contentWindow.document;
+            iframe_doc.addEventListener('mousedown', function(){
+                monitor_p.disconnect(); }); } // アイコンカラー取得終了
+
+        function get_copy(){
+            set_color=color_label.getAttribute('data-color');
+            l_color.value='#'+ set_color;
+            l_color.style.boxShadow=
+                'inset -20px 0 ' + l_color.value;
+            monitor_p.disconnect(); } // アイコンカラー取得終了
+
+        let target_body=document.querySelector('.l-body'); // 監視 target
+        let monitor_generator=new MutationObserver(stealth);
+        monitor_generator.observe(target_body, {childList: true, subtree: true});
+
+        function stealth(){
+            let color_generator=document.querySelector('.ck-l-colorGenerator');
+            if(color_generator){
+                color_generator.addEventListener('mousedown', function(event){
+                    event.stopImmediatePropagation(); }); }}
+
+    } // pick_color()
+}
