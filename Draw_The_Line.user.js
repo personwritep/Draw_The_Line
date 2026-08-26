@@ -1,11 +1,11 @@
 // ==UserScript==
 // @name        Draw The Line ⭐
 // @namespace        http://tampermonkey.net/
-// @version        0.7
+// @version        0.8
 // @description        各種の装飾線を記入するツール  ショートカット「Ctrl+F3」
 // @author        Ameba Blog User
-// @match        https://blog.ameba.jp/ucs/entry/srventry*
-// @exclude        https://blog.ameba.jp/ucs/entry/srventrylist.do*
+// @match        https://blog.ameba.jp/ucs/entry/srventryinsertinput.do*
+// @match        https://blog.ameba.jp/ucs/entry/srventryupdateinput.do*
 // @icon        https://www.google.com/s2/favicons?sz=64&domain=ameblo.jp
 // @grant        none
 // @updateURL        https://github.com/personwritep/Draw_The_Line/raw/main/Draw_The_Line.user.js
@@ -636,4 +636,3 @@ function main(){
             }}}
 
 } // main()
-
