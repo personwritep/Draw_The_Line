@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name        Draw The Line ⭐
 // @namespace        http://tampermonkey.net/
-// @version        0.8
+// @version        0.9
 // @description        各種の装飾線を記入するツール  ショートカット「Ctrl+F3」
 // @author        Ameba Blog User
 // @match        https://blog.ameba.jp/ucs/entry/srventryinsertinput.do*
@@ -11,6 +11,10 @@
 // @updateURL        https://github.com/personwritep/Draw_The_Line/raw/main/Draw_The_Line.user.js
 // @downloadURL        https://github.com/personwritep/Draw_The_Line/raw/main/Draw_The_Line.user.js
 // ==/UserScript==
+
+
+let listen=Symbol();
+let listen2=Symbol();
 
 
 let retry=0;
@@ -56,25 +60,30 @@ function main(){
 
     catch_key();
 
-
-
     function catch_key(){
+        if(!document[listen]){
+            document.addEventListener('keydown', check_key);
+            document[listen]=true; }
+
         if(document.querySelector('.cke_wysiwyg_frame') !=null){ //「通常表示」から実行開始
             editor_iframe=document.querySelector('.cke_wysiwyg_frame');
-            iframe_doc=editor_iframe.contentWindow.document;
-            selection=iframe_doc.getSelection();
+            if(editor_iframe){
+                iframe_doc=editor_iframe.contentWindow.document;
+                if(iframe_doc){
+                    selection=iframe_doc.getSelection();
+                    if(!iframe_doc[listen]){
+                        iframe_doc.addEventListener('keydown', check_key);
+                        iframe_doc[listen]=true; }}}}
 
-            iframe_doc.addEventListener('keydown', check_key);
-            document.addEventListener('keydown', check_key);
 
-            function check_key(event){
-                let gate=-1;
-                if(event.ctrlKey==true){
-                    if(event.keyCode==114){ // F3
-                        event.preventDefault(); gate=1; }
-                    if(gate==1){
-                        event.stopImmediatePropagation();
-                        do_task(); }}}
+        function check_key(event){
+            let gate=-1;
+            if(event.ctrlKey==true){
+                if(event.keyCode==114){ // F3
+                    event.preventDefault(); gate=1; }
+                if(gate==1){
+                    event.stopImmediatePropagation();
+                    do_task(); }}
 
             function do_task(){
                 if(task==0){
@@ -93,7 +102,10 @@ function main(){
                 else if(task==4 || task==5){
                     task=0;
                     panel_remove(); }}
-        }} // catch_key()
+
+        } // check_key()
+
+    } // catch_key()
 
 
 
@@ -137,21 +149,21 @@ function main(){
                 set_panel(); }}
 
 
-        l_width.addEventListener('input', function(event){
+        l_width.oninput=(event)=>{
             event.preventDefault();
             setting[task][0]=l_width.value;
             let write_json=JSON.stringify(setting);
-            localStorage.setItem('Draw_Line', write_json); }); // ローカルストレージ 保存
+            localStorage.setItem('Draw_Line', write_json); } // ローカルストレージ 保存
 
 
-        l_base.addEventListener('input', function(event){
+        l_base.oninput=(event)=>{
             event.preventDefault();
             setting[task][1]=l_base.value;
             let write_json=JSON.stringify(setting);
-            localStorage.setItem('Draw_Line', write_json); }); // ローカルストレージ 保存
+            localStorage.setItem('Draw_Line', write_json); } // ローカルストレージ 保存
 
 
-        l_trance.addEventListener('input', function(event){
+        l_trance.oninput=(event)=>{
             event.preventDefault();
             if(!test_color(l_color.value) && l_color.value.length==9){ // 不適合な #付き9桁コードの場合
                 if(test_color(l_color.value.slice(0, -2))){ // アルファ―値のみ不適合なら修正
@@ -168,7 +180,7 @@ function main(){
 
             setting[task][2]=l_color.value;
             let write_json=JSON.stringify(setting);
-            localStorage.setItem('Draw_Line', write_json); }); // ローカルストレージ 保存
+            localStorage.setItem('Draw_Line', write_json); } // ローカルストレージ 保存
 
 
         ms.onclick=function(){
@@ -209,7 +221,7 @@ function main(){
         imp.onclick=function(){
             file_read.click(); }
 
-        file_read.addEventListener("change" , function(event){
+        file_read.onchange=(event)=>{
             event.stopImmediatePropagation();
 
             if(!(file_read.value)) return; // ファイルが選択されない場合
@@ -231,7 +243,7 @@ function main(){
                           "　　　読込んだファイル名:　" + file.name); }
                 else{
                     alert("❌　Draw The Line の Exportファイルではありません\n"+
-                          "　　　Importファイルは 「draw_line ... 」の名前です"); }}});
+                          "　　　Importファイルは 「draw_line ... 」の名前です"); }}}
 
 
         l_type.onclick=function(){
@@ -542,7 +554,7 @@ function main(){
                 selection.removeAllRanges(); // 反転選択がある場合に背景指定を防止する
                 monitor_p.observe(target_p, {attributes: true}); }} // アイコンカラー取得開始
 
-        l_color.addEventListener('input', function(event){
+        l_color.oninput=(event)=>{
             event.preventDefault();
             let l_trance=document.querySelector('#l_trance');
             if(l_trance){
@@ -561,17 +573,20 @@ function main(){
             if(test_colorE(l_color.value)){ // test_colorEを実行 ⏹ 不適正な入力は登録されない
                 setting[task][2]=l_color.value;
                 let write_json=JSON.stringify(setting);
-                localStorage.setItem('Draw_Line', write_json); }}); // ローカルストレージ 保存
+                localStorage.setItem('Draw_Line', write_json); }} // ローカルストレージ 保存
 
-
-        document.addEventListener('mousedown', function(){
-            monitor_p.disconnect(); }); // アイコンカラー取得終了
+        if(!document[listen2]){
+            document.addEventListener('mousedown', function(){
+                monitor_p.disconnect(); }); // アイコンカラー取得終了
+            document[listen2]=true; }
 
         if(document.querySelector('.cke_wysiwyg_frame') !=null){
             let editor_iframe=document.querySelector('.cke_wysiwyg_frame');
             let iframe_doc=editor_iframe.contentWindow.document;
-            iframe_doc.addEventListener('mousedown', function(){
-                monitor_p.disconnect(); }); } // アイコンカラー取得終了
+            if(!iframe_doc[listen2]){
+                iframe_doc.addEventListener('mousedown', function(){
+                    monitor_p.disconnect(); }); // アイコンカラー取得終了
+                iframe_doc[listen2]=true; }}
 
 
         function get_copy(){
@@ -596,8 +611,8 @@ function main(){
         function stealth(){
             let color_generator=document.querySelector('.ck-l-colorGenerator');
             if(color_generator){
-                color_generator.addEventListener('mousedown', function(event){
-                    event.stopImmediatePropagation(); }); }}
+                color_generator.onmousedown=(event)=>{
+                    event.stopImmediatePropagation(); }}}
     } // pick_color()
 
 
